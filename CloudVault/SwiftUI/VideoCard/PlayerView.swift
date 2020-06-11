@@ -4,7 +4,7 @@
 //
 //  Created by Jean-Marc Boullianne on 12/21/19.
 //  Copyright © 2019 TrailingClosure. All rights reserved.
-//
+//  source: git@github.com:jboullianne/VideoCard.git
 
 
 import UIKit
@@ -46,4 +46,3 @@ class PlayerView: UIView {
         playerLayer.frame = bounds
     }
 }
-

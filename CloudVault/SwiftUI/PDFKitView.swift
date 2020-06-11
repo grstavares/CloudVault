@@ -4,7 +4,7 @@
 //
 //  Created by Gustavo Tavares on 31.05.20.
 //  Copyright © 2020 Gustavo Tavares. All rights reserved.
-//
+//  source: https://stackoverflow.com/questions/61478290/how-can-i-open-a-local-pdf-file-using-a-swiftui-button
 
 import SwiftUI
 import PDFKit

@@ -4,7 +4,7 @@
 //
 //  Created by Jean-Marc Boullianne on 4/25/20.
 //  Copyright © 2020 TrailingClosure. All rights reserved.
-//
+//  source: git@github.com:jboullianne/SplashView.git
 
 import SwiftUI
 

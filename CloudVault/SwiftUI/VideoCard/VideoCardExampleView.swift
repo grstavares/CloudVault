@@ -1,14 +1,14 @@
 //
-//  ContentView.swift
+//  VideoCardExampleView.swift
 //  VideoCard
 //
 //  Created by Jean-Marc Boullianne on 12/21/19.
 //  Copyright © 2019 TrailingClosure. All rights reserved.
-//
+//  source: git@github.com:jboullianne/VideoCard.git
 
 import SwiftUI
 
-struct ContentView: View {
+struct VideoCardExampleView: View {
     @State var maxHeight:CGFloat = 200
     
     var body: some View {

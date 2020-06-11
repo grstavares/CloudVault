@@ -4,7 +4,7 @@
 //
 //  Created by Jean-Marc Boullianne on 11/30/19.
 //  Copyright © 2019 Jean-Marc Boullianne. All rights reserved.
-//
+//  source: git@github.com:jboullianne/SwiftUIBanner.git
 
 import SwiftUI
 
