@@ -10,6 +10,7 @@ import Foundation
 
 fileprivate let METADA_FILENAME = "metadata.data"
 fileprivate let ASSET_FILENAME = "asset.data"
+fileprivate let DATA_FILENAME = "content.data"
 
 extension AssetPackage {
     
@@ -21,20 +22,17 @@ extension AssetPackage {
             else { return nil }
                 
         guard let wrapperAsset = wrapper.fileWrappers?[ASSET_FILENAME],
-            let encodedAsset = wrapperAsset.regularFileContents
+            let encodedAsset = wrapperAsset.regularFileContents,
+            let codableAsset = try? AppSystem.shared.decoder.decode(CodableAsset.self, from: encodedAsset)
+            else { return nil }
+
+        guard let wrapperData = wrapper.fileWrappers?[DATA_FILENAME],
+            let content = wrapperData.regularFileContents
             else { return nil }
         
-        let encrypted = decodedMetadata.encrypted
-        
-        if encrypted, let decodedAsset = try? AppSystem.shared.decoder.decode(EncryptedAsset.self, from: encodedAsset) {
-            return AssetPackage.from(asset: decodedAsset, url: url, metadata: decodedMetadata)
-        }
-        
-        if let decodedAsset = try? AppSystem.shared.decoder.decode(UnencryptedAsset.self, from: encodedAsset) {
-            return AssetPackage.from(asset: decodedAsset, url: url, metadata: decodedMetadata)
-        }
-        
-        return nil
+        let asset = AssetPackage.createAsset(encrypted: decodedMetadata.encrypted, info: codableAsset, content: content)
+        let package = AssetPackage.using(asset: asset, url: url, metadata: decodedMetadata)
+        return package
         
     }
     
@@ -50,7 +48,6 @@ extension AssetPackage {
             
         } else {
         
-//            self.loadFromUrl(url: url)
             print("is not file")
             return nil  //FIXME
         }
@@ -72,25 +69,28 @@ extension AssetPackage {
         let fileWrapper = FileWrapper(directoryWithFileWrappers: [:])
         fileWrapper.addRegularFile(withContents: encodedMetadata, preferredFilename: METADA_FILENAME)
         fileWrapper.addRegularFile(withContents: encodedAsset, preferredFilename: ASSET_FILENAME)
+        fileWrapper.addRegularFile(withContents: self.asset.data, preferredFilename: DATA_FILENAME)
         return fileWrapper
         
     }
     
     private var encodeAsset: Data? {
     
-        let encrypted = self.metadata.encrypted
-        if encrypted {
-            guard let typed = self.asset as? EncryptedAsset else { return nil }
-            return try? AppSystem.shared.encoder.encode(typed)
-        } else {
-            guard let typed = self.asset as? UnencryptedAsset else { return nil }
-            return try? AppSystem.shared.encoder.encode(typed)
-        }
+        let codable = CodableAsset(name: self.asset.name, type: self.asset.type)
+        return try? AppSystem.shared.encoder.encode(codable)
     
     }
     
     private func loadFromUrl(url: URL) -> Void {
         AppSystem.shared.logDiagnose(message: "Load Remote Not Implemented")
+    }
+    
+    private static func createAsset(encrypted: Bool, info: CodableAsset, content: Data) -> Asset {
+        
+        let assetName = info.name
+        let assetType = info.type
+        return encrypted ? EncryptedAsset(name: assetName, type: assetType, data: content) : UnencryptedAsset(name: assetName, type: assetType, data: content)
+
     }
     
 }

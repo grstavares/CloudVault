@@ -15,13 +15,7 @@ struct EncryptedAsset: Asset {
     let name: String
     let type: AssetType
     let data: Data
-    
-    fileprivate init(name: String, type: AssetType, data: Data) {
-        self.name = name
-        self.type = type
-        self.data = data
-    }
-    
+
 }
 
 extension EncryptedAsset {

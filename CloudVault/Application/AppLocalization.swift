@@ -7,7 +7,8 @@
 //
 
 import Foundation
-enum AppLocalizationKey: String {
+enum UserInterfaceLabel: String {
+
     case inboxTitle
     case vaultTitle
     case settingsTitle
@@ -33,6 +34,35 @@ enum AppLocalizationKey: String {
     case genericConfirmation
     case actionSuccess
     
-    var localized: String { NSLocalizedString(self.rawValue, comment: "") }
+    var localized: String {
+        
+        switch self {
+        case .inboxTitle: return NSLocalizedString(self.rawValue, comment: "")
+        case .vaultTitle: return NSLocalizedString(self.rawValue, comment: "")
+        case .settingsTitle: return NSLocalizedString(self.rawValue, comment: "")
+        case .settingsSecurity: return NSLocalizedString(self.rawValue, comment: "")
+        case .settingsSecurityRequireBiometric: return NSLocalizedString(self.rawValue, comment: "")
+        case .settingsSecurityClearInboxAfterDays: return NSLocalizedString(self.rawValue, comment: "")
+        case .settingsSecurityMaxLocalSizeInMb: return NSLocalizedString(self.rawValue, comment: "")
+        case .settingsdisableThumbnails: return NSLocalizedString(self.rawValue, comment: "")
+        case .settingsSystemLog: return NSLocalizedString(self.rawValue, comment: "")
+        case .settingsSystemLogOperations: return NSLocalizedString(self.rawValue, comment: "")
+        case .settingsSystemLogDiagnose: return NSLocalizedString(self.rawValue, comment: "")
+        case .settingsSystemLogErrors: return NSLocalizedString(self.rawValue, comment: "")
+        case .settingsApplicationData: return NSLocalizedString(self.rawValue, comment: "")
+        case .settingsAtionClearInbox: return NSLocalizedString(self.rawValue, comment: "")
+        case .settingsActionClearData: return NSLocalizedString(self.rawValue, comment: "")
+        case .settingsActionClearLogs: return NSLocalizedString(self.rawValue, comment: "")
+        case .actionEncrypt: return NSLocalizedString(self.rawValue, comment: "")
+        case .actionSheetTitle: return NSLocalizedString(self.rawValue, comment: "")
+        case .actionMove: return NSLocalizedString(self.rawValue, comment: "")
+        case .actionRemove: return NSLocalizedString(self.rawValue, comment: "")
+        case .moveConfirmation: return NSLocalizedString(self.rawValue, comment: "")
+        case .removeConfirmation: return NSLocalizedString(self.rawValue, comment: "")
+        case .genericConfirmation: return NSLocalizedString(self.rawValue, comment: "")
+        case .actionSuccess: return NSLocalizedString(self.rawValue, comment: "")
+        }
+        
+    }
     
 }

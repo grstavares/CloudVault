@@ -10,7 +10,6 @@ import Foundation
 import Combine
 
 fileprivate let defaultBiometric = false
-fileprivate let defaultClearInboxAfterDays = 10
 fileprivate let defaulmaxLocalSizeInMb: Double = 200
 
 class AppSettings: ObservableObject {
@@ -18,52 +17,52 @@ class AppSettings: ObservableObject {
     private enum Keys: String, CaseIterable {
         case requireBiometric
         case maxLocalSizeInMb
-        case clearInboxAfterDays
     }
 
+    private static var _shared: AppSettings?
+    
+    public static var shared:AppSettings {
+        
+        if AppSettings._shared == nil { AppSettings._shared = AppSettings() }
+        return AppSettings._shared!
+        
+    }
+    
     private static func defaultValue(for key: Keys) -> AnyHashable {
         
         switch key {
         case .requireBiometric: return defaultBiometric
         case .maxLocalSizeInMb: return defaulmaxLocalSizeInMb
-        case .clearInboxAfterDays: return defaultClearInboxAfterDays
         }
         
     }
     
-    private let cancellable: Cancellable
     private let defaults: UserDefaults
 
-    let objectWillChange = PassthroughSubject<Void, Never>()
+    @Published var requireBiometric: Bool {
+        didSet { self.defaults.set(requireBiometric, forKey: Keys.requireBiometric.rawValue) }
+    }
     
-    init(defaults: UserDefaults = .standard) {
+    @Published var maxLocalSizeInMb: Int {
+        didSet { self.defaults.set(maxLocalSizeInMb, forKey: Keys.maxLocalSizeInMb.rawValue) }
+    }
+    
+    private init(defaults: UserDefaults = .standard) {
         
         var defaultValues: [String: AnyHashable] = [:]
         Keys.allCases.forEach { defaultValues[$0.rawValue] = AppSettings.defaultValue(for: $0) }
 
         defaults.register(defaults: defaultValues)
-        self.defaults = defaults
-        
-        self.cancellable = NotificationCenter.default
-            .publisher(for: UserDefaults.didChangeNotification)
-            .map { _ in () }
-            .subscribe(objectWillChange)
-        
-    }
-    
-    var requireBiometric: Bool {
-        get { self.defaults.bool(forKey: Keys.requireBiometric.rawValue) }
-        set { self.defaults.set(newValue, forKey: Keys.requireBiometric.rawValue) }
-    }
 
-    var clearInboxAfterDays: Int {
-        get { self.defaults.integer(forKey: Keys.clearInboxAfterDays.rawValue) }
-        set { self.defaults.set(newValue, forKey: Keys.clearInboxAfterDays.rawValue) }
+        self.defaults = defaults
+        self.requireBiometric =  self.defaults.bool(forKey: Keys.requireBiometric.rawValue)
+        self.maxLocalSizeInMb = self.defaults.integer(forKey: Keys.maxLocalSizeInMb.rawValue)
+
     }
     
-    var maxLocalSizeInMb: Int {
-        get { self.defaults.integer(forKey: Keys.maxLocalSizeInMb.rawValue) }
-        set { self.defaults.set(newValue, forKey: Keys.maxLocalSizeInMb.rawValue) }
+    private func reloadValues() -> Void {
+        self.requireBiometric =  self.defaults.bool(forKey: Keys.requireBiometric.rawValue)
+        self.maxLocalSizeInMb = self.defaults.integer(forKey: Keys.maxLocalSizeInMb.rawValue)
     }
        
     var keys: [String] { return Keys.allCases.map { $0.rawValue} }

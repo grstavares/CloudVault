@@ -8,7 +8,7 @@
 
 import Foundation
 
-public enum FileRepositoryError: Error, Equatable {
+public enum RepositoryError: Error, Equatable {
 
     case unableToLocateContainerRootFolder
     case unableToAccessDisk
@@ -22,13 +22,13 @@ public enum FileRepositoryError: Error, Equatable {
     public var localizedDescription: String {
 
         switch self {
-        case .unableToAccessDisk: return NSLocalizedString(RepositoryLocatizationKey.unableToAccessDisk.rawValue, comment: "Unable To Access Storage!")
-        case .unableToLocateContainerRootFolder: return NSLocalizedString(RepositoryLocatizationKey.unableToLocateRootFolder.rawValue, comment: "Container not Configured to be used on this Application!")
-        case .unableToLoadDataFromFile: return NSLocalizedString(RepositoryLocatizationKey.unableToLoadDataFromFile.rawValue, comment: "Can not load data from File!")
-        case .permissionDenied: return NSLocalizedString(RepositoryLocatizationKey.permissionDenied.rawValue, comment: "Unable to access file in Disk!")
-        case .fileDoNotExist(let filename): return "\(NSLocalizedString(RepositoryLocatizationKey.fileDoNotExist.rawValue, comment: "File does not Exist")) -> \(filename)!"
-        case .folderAlreadyExist(let folderName): return "\(NSLocalizedString(RepositoryLocatizationKey.folderAlreadyExist.rawValue, comment: "Folder Already Exist")) -> \(folderName)!"
-        case .folderDoNotExist(let folderName): return "\(NSLocalizedString(RepositoryLocatizationKey.folderDoNotExist.rawValue, comment: "Folder does not Exist")) -> \(folderName)!"
+        case .unableToAccessDisk: return NSLocalizedString("AppServices-Repository-UnableToAccessDisk", comment: "Unable To Access Storage!")
+        case .unableToLocateContainerRootFolder: return NSLocalizedString("AppServices-Repository-UnableToLocateRootFolder", comment: "Container not Configured to be used on this Application!")
+        case .unableToLoadDataFromFile: return NSLocalizedString("AppServices-Repository-UnableToLoadDataFromFile", comment: "Can not load data from File!")
+        case .permissionDenied: return NSLocalizedString("AppServices-Repository-PermissionDenied", comment: "Unable to access file in Disk!")
+        case .fileDoNotExist(let filename): return "\(NSLocalizedString("AppServices-Repository-FileDoesNotExist", comment: "File does not Exist")) -> \(filename)!"
+        case .folderAlreadyExist(let folderName): return "\(NSLocalizedString("AppServices-Repository-FolderAlreadyExist", comment: "Folder Already Exist")) -> \(folderName)!"
+        case .folderDoNotExist(let folderName): return "\(NSLocalizedString("AppServices-Repository-FolderDoesNotExist", comment: "Folder does not Exist")) -> \(folderName)!"
         default: return "Error not identified!"
         }
 
@@ -36,20 +36,12 @@ public enum FileRepositoryError: Error, Equatable {
 
 }
 
-public typealias RepositoryOperationOutput = Result<Bool, FileRepositoryError>
-public typealias RepositoryExistsOutput = Result<Bool, FileRepositoryError>
-public typealias ReposityFileOutput = Result<RepositoryFile, FileRepositoryError>
-public typealias ReposityListOutput = Result<[RepositoryFile], FileRepositoryError>
+public typealias RepositoryOperationOutput = Result<Bool, RepositoryError>
+public typealias RepositoryExistsOutput = Result<Bool, RepositoryError>
+public typealias ReposityFileOutput = Result<RepositoryFile, RepositoryError>
+public typealias ReposityListOutput = Result<[RepositoryFile], RepositoryError>
 
 public class Repository {
-   
-    enum AcceptedFileType {
-        case image
-        case text
-        case pdf
-        case movie
-        case data
-    }
 
     public enum EnabledContainer {
         case local
@@ -59,7 +51,7 @@ public class Repository {
     }
     
     private var appGroupId: String?
-    private let serialQueue = DispatchQueue(label: "\(AppSystem.serialQueueId).repository", qos: .background)
+    private let serialQueue: DispatchQueue = DispatchQueue(label: "\(AppSystem.shared.bundleName).repository", qos: .background)
     
     public init(appGroupId: String? = nil) {
         self.appGroupId = appGroupId
@@ -70,27 +62,27 @@ public class Repository {
         let documentsDirectory = paths[0]
         return documentsDirectory
     }
+    
+    private var groupDocumentsFolderOrFailbakToLocal: URL {
+
+        guard let appGroupId = self.appGroupId else {
+            return self.localDocumentsFolder
+        }
+        
+        guard let groupContainer = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId) else {
+            return self.localDocumentsFolder
+        }
+        
+        return groupContainer
+        
+    }
 
     public func root(for container: EnabledContainer) -> URL {
         
         switch container {
-            
         case .local: return self.localDocumentsFolder
-        
-        case.appGroup:
-            
-            guard let appGroupId = self.appGroupId else {
-                return self.localDocumentsFolder
-            }
-            
-            guard let groupContainer = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId) else {
-                return self.localDocumentsFolder
-            }
-            
-            return groupContainer
-            
-        default:
-            return self.localDocumentsFolder
+        case.appGroup: return self.groupDocumentsFolderOrFailbakToLocal
+        default: return self.localDocumentsFolder
         }
         
     }
@@ -243,11 +235,11 @@ public class Repository {
         
     }
     
-    private func parseError(error: Error, inLine line: Int = 0) -> FileRepositoryError {
+    private func parseError(error: Error, inLine line: Int = 0) -> RepositoryError {
         print(error.localizedDescription)
         
         let nsError = error as NSError
-        let repoError: FileRepositoryError?
+        let repoError: RepositoryError?
         switch nsError.code {
         case 257: repoError = .permissionDenied
         default: repoError = .undefined

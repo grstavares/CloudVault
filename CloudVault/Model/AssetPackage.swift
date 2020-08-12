@@ -20,7 +20,7 @@ class AssetPackage: Identifiable, ObservableObject {
         case new, loading, loaded, failed(Failure)
     }
     
-    let id: String = ULID().stringValue
+    var id: String { self.metadata.id }
 
     @Published private (set) var status: Status
     @Published private (set) var metadata: AssetMetadata
@@ -39,19 +39,30 @@ class AssetPackage: Identifiable, ObservableObject {
 }
 
 extension AssetPackage {
+
+    static func new(asset: UnencryptedAsset, metadata existent: AssetMetadata? = nil) -> AssetPackage  {
+        
+        let metadata = existent ?? AssetMetadata(id: ULID().stringValue, sharedDate: Date(), filename: asset.name, encrypted: false, showThumbnail: true)
+        return AssetPackage(asset: asset, url: nil, metadata: metadata, status: .new)
+        
+    }
     
     static func from(asset: UnencryptedAsset, url: URL?, metadata existent: AssetMetadata? = nil) -> AssetPackage  {
         
-        let metadata = existent ?? AssetMetadata(sharedDate: Date(), filename: asset.name, encrypted: false, showThumbnail: true)
+        let metadata = existent ?? AssetMetadata(id: ULID().stringValue,sharedDate: Date(), filename: asset.name, encrypted: false, showThumbnail: true)
         return AssetPackage(asset: asset, url: url, metadata: metadata)
         
     }
     
     static func from(asset: EncryptedAsset, url: URL?, metadata existent: AssetMetadata? = nil) -> AssetPackage {
         
-        let metadata = existent ?? AssetMetadata(sharedDate: Date(), filename: asset.name, encrypted: true, showThumbnail: true)
+        let metadata = existent ?? AssetMetadata(id: ULID().stringValue,sharedDate: Date(), filename: asset.name, encrypted: true, showThumbnail: true)
         return AssetPackage(asset: asset, url: url, metadata: metadata)
         
+    }
+    
+    static func using(asset: Asset, url: URL, metadata: AssetMetadata) -> AssetPackage {
+        return AssetPackage(asset: asset, url: url, metadata: metadata)
     }
     
 }

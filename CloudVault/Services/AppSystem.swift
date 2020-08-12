@@ -9,22 +9,31 @@
 import Foundation
 import Combine
 
-class AppSystem: ObservableObject {
+public class AppSystem: ObservableObject {
     
-    public static var shared = AppSystem()
+    private static var _shared: AppSystem?
+    
+    public static var shared:AppSystem {
+        
+        if AppSystem._shared == nil { AppSystem._shared = AppSystem() }
+        return AppSystem._shared!
+        
+    }
 
     private var _encoder: JSONEncoder?
     private var _decoder: JSONDecoder?
     private var _isoFormatter: Formatter?
     
-    private let serialQueue = DispatchQueue(label: "PublisherQueue", qos: .userInteractive)
+    public let bundleName: String
+    private let logger: AppLogger
     
-    @Published private(set) var operations: String = ""
-    @Published private(set) var diagnoses: String = ""
-    @Published private(set) var exceptions: Error? = nil
-    
-    private init() { }
+    private init() {
+        self.bundleName = Bundle.main.bundleIdentifier ?? "notIdentified"
+        self.logger = AppLogger(context: self.bundleName)
+    }
 
+    @Published var isPortrait: Bool = true
+    
     public var encoder: JSONEncoder {
               
       if self._encoder != nil { return self._encoder! }
@@ -55,49 +64,21 @@ class AppSystem: ObservableObject {
 
     }
     
-    public func logOperation(message: String, file: String? = nil, line: Int = 0) -> Void {
-        let parsedMessage = self.parseMessage(message: message, file: file, line: line)
-        serialQueue.sync { self.operations = parsedMessage }
-        
-    }
-    
-    public func logDiagnose(message: String, file: String? = nil, line: Int = 0) -> Void {
-        let parsedMessage = self.parseMessage(message: message, file: file, line: line)
-        serialQueue.sync { self.diagnoses = parsedMessage }
-    }
-    
-    public func logException(error: Error?, file: String? = nil, line: Int = 0) -> Void {
-        let parsedMessage = self.parseMessage(error: error, file: file, line: line)
-        serialQueue.sync { self.diagnoses = parsedMessage }
-    }
-
-    private func parseMessage(error: Error?, file: String?, line: Int) -> String {
-        
-        let date = AppSystem.shared.isoFormatter.string(for: Date()) ?? "NoDate"
-        let message = error?.localizedDescription ?? LOG_MESSAGE_ERROR_NOT_IDENTIFIABLE
-        if let filename = file, let fileUrl = URL(string: filename) {
-            return "\(date): \(message) file: \(fileUrl.lastPathComponent); line: \(line)"
-        } else { return "\(date): \(message)" }
-        
-    }
-    
-    private func parseMessage(message: String, file: String?, line: Int) -> String {
-        
-        let date = AppSystem.shared.isoFormatter.string(for: Date()) ?? "NoDate"
-        if let filename = file, let fileUrl = URL(string: filename) {
-            return "\(date): \(message) file: \(fileUrl.lastPathComponent); line: \(line)"
-        } else { return "\(date): \(message)" }
-        
-    }
-    
     public func releaseResources() -> Void {
         self._encoder = nil
         self._decoder = nil
         self._isoFormatter = nil
-        self.operations = "Initialized"
-        self.exceptions = nil
     }
     
 }
 
-fileprivate let LOG_MESSAGE_ERROR_NOT_IDENTIFIABLE = "Error Not Identifiable!"
+// Log Methods delegation process
+extension AppSystem {
+    
+    public func logOperation(message: String, file: String? = nil, line: Int = 0) -> Void { self.logger.logOperation(message: message, file: file, line: line) }
+    
+    public func logDiagnose(message: String, file: String? = nil, line: Int = 0) -> Void { self.logger.logDiagnose(message: message, file: file, line: line) }
+    
+    public func logException(error: Error?, file: String? = nil, line: Int = 0) -> Void { self.logger.logException(error: error, file: file, line: line) }
+
+}

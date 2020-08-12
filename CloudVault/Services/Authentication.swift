@@ -11,15 +11,23 @@ import LocalAuthentication
 import Combine
 
 enum AuthenticationError: Error {
+    
     case userCanceledAuthentication
     case biometricAuthenticationNotAvailable
     case biometricAuthenticationFailed
     case notIdentified
-}
+    
+    public var localizedDescription: String {
 
-private enum AuthenticatorStringKey: String {
-    case cancelTitle
-    case authReason
+        switch self {
+        case .userCanceledAuthentication: return NSLocalizedString("AppServices-Authenticator-UserCanceledAuthProcess", comment: "")
+        case .biometricAuthenticationNotAvailable: return NSLocalizedString("AppServices-Authenticator-BiometricNotAvailable", comment: "")
+        case .biometricAuthenticationFailed: return NSLocalizedString("AppServices-Authenticator-BiometricFailed", comment: "")
+        case .notIdentified: return NSLocalizedString("AppServices-Authenticator-ErrorNotIdentified", comment: "")
+        }
+
+    }
+    
 }
 
 typealias AuthenticationStatus = Result<Bool, AuthenticationError>
@@ -35,8 +43,8 @@ class Authenticator {
     
     public func authenticateWithBiometrics() {
         
-        let cancelTitle = NSLocalizedString(AuthenticatorStringKey.cancelTitle.rawValue, comment: "Title to be presented in the Authentication Modal for Cancel the Auth Process")
-        let authReason = NSLocalizedString(AuthenticatorStringKey.authReason.rawValue, comment: "Title to be presented in the Authentication Modal")
+        let cancelTitle = NSLocalizedString("AppServices_Authentication-CancelButton", comment: "Title to be presented in the Authentication Modal for Cancel the Auth Process")
+        let authReason = NSLocalizedString("AppServices_Authentication-ModalTitle", comment: "Title to be presented in the Authentication Modal")
         
         let context = LAContext()
         
@@ -88,6 +96,5 @@ class Authenticator {
         return self.parseErrorReason(error as NSError?)
                 
     }
-    
-    
+
 }

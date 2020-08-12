@@ -11,12 +11,10 @@ import Combine
 
 private let INBOX_FOLDER_NAME = "Shared"
 private let DATA_FOLDER_NAME = "Data"
+private let TEMP_FOLDER_NAME = "Temp"
 private let SYS_FOLDER_NAME = "System"
 private let PACKAGE_EXTENSION = "pckg"
 private let SYS_LOG_INITIALIZATION_CONTENT = "LOG INITIALIZATION"
-private let SYS_LOG_PREFIX = "operations"
-private let SYS_DIAGNOSE_PREFIX = "diagnose"
-private let SYS_ERROR_PREFIX = "errors"
 
 class AppRepository: ObservableObject {
     
@@ -24,25 +22,50 @@ class AppRepository: ObservableObject {
     
     public static var shared:AppRepository {
         
-        if AppRepository._shared == nil { AppRepository._shared = AppRepository() }
+        if AppRepository._shared == nil {
+        
+            let repo = AppRepository()
+            repo.initializeFolders()
+            repo.initializeFiles()
+            repo.initializePublishers()
+            
+            AppRepository._shared = repo
+        
+        }
+        
         return AppRepository._shared!
         
     }
     
+    // Static Method to accept Packages to be persisted on the Shared Folder
+    public static func addToDropBox(package: AssetPackage) -> Bool {
+
+        let appRepo = AppRepository()
+        let packageULID = ULID().stringValue
+        let root = appRepo.repository.root(for: .appGroup)
+        let filepath = root
+            .appendingPathComponent(INBOX_FOLDER_NAME)
+            .appendingPathComponent(packageULID)
+            .appendingPathExtension(PACKAGE_EXTENSION)
+
+        guard let wrapper = package.fileWrapper else {
+            return false
+        }
+
+        let saveFileResult = appRepo.repository.saveFileWrapper(filename: filepath, fileWrapper: wrapper)
+        switch saveFileResult {
+        case .success(let result): return result
+        default: return false;
+        }
+
+    }
+    
     private var repository: Repository
-    private var cancellables: [Cancellable] = []
     
-    @Published var inbox: [RepositoryFile] = []
-    @Published var assets: [RepositoryFile] = []
+    @Published var assets: [AssetPackage] = []
     
-    public init(repository: Repository = Repository(appGroupId: AppSystem.appGroupId)) {
-    
-        self.repository = repository
-        self.initializeListeners()
-        self.initializeFolders()
-        self.initializeFiles()
-        self.reload()
-        
+    private init() {
+        self.repository = Repository(appGroupId: AppSystem.appGroupId)
     }
            
     public func getFileListFromSharedFolder() -> ReposityListOutput {
@@ -51,18 +74,10 @@ class AppRepository: ObservableObject {
         return repository.listFolder(foldername: datafolder)
     }
     
-    public func getFileListFromDataFolder() -> ReposityListOutput {
+    public func getFileListFromLocalFolder(folderName: String) -> ReposityListOutput {
         
         let localroot = self.repository.root(for: .local)
-        let datafolder = localroot.appendingPathComponent(DATA_FOLDER_NAME)
-        return repository.listFolder(foldername: datafolder)
-
-    }
-    
-    public func getFileListFromSystemFolder() -> ReposityListOutput {
-        
-        let localroot = self.repository.root(for: .local)
-        let datafolder = localroot.appendingPathComponent(SYS_FOLDER_NAME)
+        let datafolder = localroot.appendingPathComponent(folderName)
         return repository.listFolder(foldername: datafolder)
 
     }
@@ -79,16 +94,25 @@ class AppRepository: ObservableObject {
 
     public func clearDataFolder() -> Bool {
         
-        self.getFileListFromDataFolder()
+        self.getFileListFromLocalFolder(folderName: DATA_FOLDER_NAME)
             .getValidValues()
             .forEach { (file: RepositoryFile) in _ = self.repository.removeFile(filename: file.url) }
         
         return true
     }
 
+    public func clearTempFolder() -> Bool {
+        
+        self.getFileListFromLocalFolder(folderName: TEMP_FOLDER_NAME)
+            .getValidValues()
+            .forEach { (file: RepositoryFile) in _ = self.repository.removeFile(filename: file.url) }
+        
+        return true
+    }
+    
     public func clearSystemFolder() -> Bool {
         
-        self.getFileListFromSystemFolder()
+        self.getFileListFromLocalFolder(folderName: SYS_FOLDER_NAME)
             .getValidValues()
             .forEach { (file: RepositoryFile) in _ = self.repository.removeFile(filename: file.url) }
         
@@ -112,6 +136,22 @@ class AppRepository: ObservableObject {
         switch saveFileResult {
         case .success(let result): return result
         default: return false;
+        }
+        
+    }
+    
+    public func decryptToTemporaryUrl(package: AssetPackage) -> URL? {
+        
+        let filename = package.asset.name
+        let temporaryUrl = self.repository.root(for: .local)
+            .appendingPathComponent(TEMP_FOLDER_NAME)
+            .appendingPathComponent(filename)
+        
+        let assetData = package.asset.data
+        let saveFileResult = repository.createFile(filename: temporaryUrl, data: assetData)
+        switch saveFileResult {
+        case .success(let result): return result ? temporaryUrl : nil
+        default: return nil
         }
         
     }
@@ -174,6 +214,9 @@ class AppRepository: ObservableObject {
         let dataFolder = repository.root(for: .local).appendingPathComponent(DATA_FOLDER_NAME)
         self.createFolderIfNotExistent(folder: dataFolder)
 
+        let tempFolder = repository.root(for: .local).appendingPathComponent(TEMP_FOLDER_NAME)
+        self.createFolderIfNotExistent(folder: tempFolder)
+        
         let sysFolder = repository.root(for: .local).appendingPathComponent(SYS_FOLDER_NAME)
         self.createFolderIfNotExistent(folder: sysFolder)
         
@@ -207,39 +250,29 @@ class AppRepository: ObservableObject {
         }
         
     }
-           
-    private func initializeListeners() -> Void {
+    
+    private func initializePublishers() -> Void {
         
-        let backgroundQueue = DispatchQueue(label: "AppRepositoryListeners", qos: .background)
+        let inbox: [AssetPackage] = self.getFileListFromSharedFolder().map { arrayOfFiles in
+            arrayOfFiles.map { file in AssetPackage.from(url: file.url) }
+        }.getValidValues()
+
+        let assets: [AssetPackage] = self.getFileListFromLocalFolder(folderName: DATA_FOLDER_NAME).map { arrayOfFiles in
+            arrayOfFiles.map { file in AssetPackage.from(url: file.url) }
+        }.getValidValues()
         
-        self.cancellables.append(AppSystem.shared.$operations
-            .subscribe(on: backgroundQueue)
-            .receive(on: RunLoop.main)
-            .sink { if !$0.isEmpty { self.appendLogToFile(message: $0, in: self.sysLogFileName) } }
-        )
+        print(inbox.count)
+        print(assets.count)
         
-        self.cancellables.append(AppSystem.shared.$diagnoses
-            .subscribe(on: backgroundQueue)
-            .receive(on: RunLoop.main)
-            .sink { if !$0.isEmpty { self.appendLogToFile(message: $0, in: self.sysDiagnoseFileName) } }
-        )
-        
-        self.cancellables.append(AppSystem.shared.$exceptions
-            .subscribe(on: backgroundQueue)
-            .compactMap{ $0 }
-            .receive(on: RunLoop.main)
-            .sink { self.appendLogToFile(message: $0.localizedDescription, in: self.sysErrorFileName) }
-        )
+        self.assets = []
+        self.assets.append(contentsOf: inbox)
+        self.assets.append(contentsOf: assets)
         
     }
     
     private var sysLogFileName: URL {
         
-        let calendar = Calendar.current
-        let today = Date()
-        let year = calendar.component(.year, from: today)
-        let month = calendar.component(.month, from: today)
-        let filename = "\(year)-\(String(format: "%02d", month))_\(SYS_LOG_PREFIX).log"
+        let filename = AppSystem.shared.sysLogFileName
 
         let fileUrl = self.repository.root(for: .local)
             .appendingPathComponent(SYS_FOLDER_NAME)
@@ -251,11 +284,7 @@ class AppRepository: ObservableObject {
 
     private var sysDiagnoseFileName: URL {
         
-        let calendar = Calendar.current
-        let today = Date()
-        let year = calendar.component(.year, from: today)
-        let month = calendar.component(.month, from: today)
-        let filename = "\(year)-\(String(format: "%02d", month))_\(SYS_DIAGNOSE_PREFIX).log"
+        let filename = AppSystem.shared.sysDiagnoseFileName
 
         let fileUrl = self.repository.root(for: .local)
             .appendingPathComponent(SYS_FOLDER_NAME)
@@ -267,11 +296,7 @@ class AppRepository: ObservableObject {
 
     private var sysErrorFileName: URL {
         
-        let calendar = Calendar.current
-        let today = Date()
-        let year = calendar.component(.year, from: today)
-        let month = calendar.component(.month, from: today)
-        let filename = "\(year)-\(String(format: "%02d", month))_\(SYS_ERROR_PREFIX).log"
+        let filename = AppSystem.shared.sysErrorFileName
 
         let fileUrl = self.repository.root(for: .local)
             .appendingPathComponent(SYS_FOLDER_NAME)
@@ -299,12 +324,6 @@ class AppRepository: ObservableObject {
         
     }
 
-    private func reload() -> Void {
-        self.inbox = self.getFileListFromSharedFolder().getValidValues()
-        self.assets = self.getFileListFromDataFolder().getValidValues()
-        self.objectWillChange.send()
-    }
-    
-    deinit { cancellables.forEach { $0.cancel() } }
+    private func reload() -> Void { self.initializePublishers() }
     
 }

@@ -22,6 +22,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 //        }
 //
 //        Authenticator.shared.authenticateWithBiometrics()
+        sysInitialization()
         return true
         
     }
@@ -42,5 +43,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationWillResignActive(_ application: UIApplication) { AppSystem.shared.releaseResources() }
 
+    func sysInitialization() {
+        _ = AppSystem.shared
+        _ = AppSettings.shared
+        _ = AppRepository.shared
+    }
+    
 }
 
